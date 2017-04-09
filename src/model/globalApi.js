@@ -38,6 +38,9 @@ function getItemType(classTsid) {
 
 function isPlayerOnline(tsid) {
 	var p = pers.get(tsid);
+	if (p.isMovingStreets()) {
+		return true;
+	}
 	return p !== undefined && p.isConnected();
 }
 
