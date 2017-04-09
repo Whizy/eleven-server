@@ -107,6 +107,7 @@ function Player(data) {
 	utils.addNonEnumerable(this, 'active', false);
 	utils.addNonEnumerable(this, 'changes', []);
 	utils.addNonEnumerable(this, 'anncs', []);
+	utils.addNonEnumerable(this, 'msgCache', []);
 	// convert selected properties to "Property" instances (works with simple
 	// int values as well as serialized Property instances)
 	for (var group in PROPS) {
@@ -229,6 +230,13 @@ Player.prototype.onLoginStart = function onLoginStart(session, isRelogin) {
 	}
 	if (isRelogin) {
 		this.rqPush(this.onRelogin);
+		// catch up on missed msgs.
+		if (this.msgCache.length) {
+			for (var i = 0; i < this.msgCache.length; i++) {
+				this.send(this.msgCache[i]);
+			}
+			this.msgCache = [];
+		}
 	}
 	else {
 		// not in RQ since GSJS code processing the login_start request relies
@@ -535,7 +543,12 @@ Player.prototype.queueAnnc = function queueAnnc(annc) {
  *        there are changes and/or announcements to send along with it
  */
 Player.prototype.send = function send(msg, skipChanges, flushOnly) {
-	if (!this.session) {
+	if (!this.session && this.isMovingStreets()) {
+		log.info('queueing message during street move for player %s', this);
+		this.msgCache.push(msg);
+		return;
+	}
+	else if (!this.session) {
 		log.info('dropping message to offline player %s', this);
 		return;
 	}
